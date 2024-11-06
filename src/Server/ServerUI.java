@@ -47,11 +47,9 @@ public class ServerUI {
         JPanel dnsLookupPanel = new DNSPanel();
         tabbedPane.addTab("Tra Cứu DNS", dnsLookupPanel);
 
-        JPanel chatPanel = createTabPanel("Chức năng chat server-client sẽ được phát triển.", new Color(255, 218, 185));
-        tabbedPane.addTab("Chat Server - Client", chatPanel);
 
-        JPanel screenSharePanel = createTabPanel("Chức năng chia sẻ màn hình sẽ được phát triển.", new Color(144, 238, 144));
-        tabbedPane.addTab("Chia Sẻ Màn Hình", screenSharePanel);
+        JPanel accessHistoryPanel = new AccessHistoryPanel();
+        tabbedPane.addTab("Giám sát lịch sử tra cứu", accessHistoryPanel);
 
         JPanel logPanel = createLogPanel();
         tabbedPane.addTab("Log", logPanel);
@@ -111,7 +109,6 @@ public class ServerUI {
                 String clientInfo = clientSocket.getInetAddress().toString();
                 appendColoredLog("Kết nối từ " + clientInfo, Color.BLUE);
 
-                // Khởi động một thread mới để xử lý client
                 DnsHandlerServer dnsHandler = new DnsHandlerServer(clientSocket, this);
                 dnsHandler.start();
             }

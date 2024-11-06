@@ -1,5 +1,8 @@
 package Client;
 
+import Database.DNSManager;
+import Database.UserManager;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -10,6 +13,7 @@ public class MainUI {
     private String username;
     private JTextField queryField;
     private JTextArea resultArea;
+    private JButton accessButton;
 
     public MainUI(String username) {
         this.username = username;
@@ -22,7 +26,6 @@ public class MainUI {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
-        // Tạo header panel với tiêu đề và tên người dùng
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(100, 149, 237));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -40,18 +43,11 @@ public class MainUI {
 
         frame.add(headerPanel, BorderLayout.NORTH);
 
-        // Tạo JTabbedPane với các tab
         JTabbedPane tabbedPane = new JTabbedPane();
 
-        // Tab tra cứu DNS
         JPanel dnsLookupPanel = createDnsLookupTab();
         tabbedPane.addTab("Tra Cứu DNS", dnsLookupPanel);
 
-        // Tab chat server-client
-        JPanel chatPanel = createChatTab();
-        tabbedPane.addTab("Chat Server - Client", chatPanel);
-
-        // Tab đăng xuất
         JPanel logoutPanel = new JPanel();
         logoutPanel.setBackground(new Color(255, 182, 193));
         JButton logoutButton = new JButton("Đăng xuất");
@@ -85,22 +81,28 @@ public class MainUI {
         lookupButton.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         lookupButton.addActionListener(e -> performDnsLookup());
 
-        // Tạo panel chứa input
+        accessButton = new JButton("Truy Cập");
+        accessButton.setEnabled(false); // Ban đầu, nút sẽ bị vô hiệu hóa
+        accessButton.addActionListener(e -> openWebsite());
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(lookupButton);
+        buttonPanel.add(accessButton);
+
         JPanel inputPanel = new JPanel(new BorderLayout(10, 10));
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         inputPanel.add(queryLabel, BorderLayout.NORTH);
         inputPanel.add(queryField, BorderLayout.CENTER);
-        inputPanel.add(lookupButton, BorderLayout.EAST);
+        inputPanel.add(buttonPanel, BorderLayout.EAST);
 
         dnsPanel.add(inputPanel, BorderLayout.NORTH);
 
-        // Thiết lập cho JTextArea
         resultArea = new JTextArea();
         resultArea.setFont(new Font("Arial", Font.PLAIN, 14));
         resultArea.setLineWrap(true);
         resultArea.setWrapStyleWord(true);
         resultArea.setEditable(false);
-        resultArea.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Padding cho JTextArea
+        resultArea.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JScrollPane scrollPane = new JScrollPane(resultArea);
         dnsPanel.add(scrollPane, BorderLayout.CENTER);
@@ -108,52 +110,79 @@ public class MainUI {
         return dnsPanel;
     }
 
-    private JPanel createChatTab() {
-        JPanel chatPanel = new JPanel();
-        chatPanel.setLayout(new BorderLayout());
-        chatPanel.setBackground(new Color(255, 218, 185));
-
-        JTextArea chatArea = new JTextArea();
-        chatArea.setEditable(false);
-        chatArea.setLineWrap(true);
-        chatArea.setWrapStyleWord(true);
-        chatArea.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        JScrollPane scrollPane = new JScrollPane(chatArea);
-        chatPanel.add(scrollPane, BorderLayout.CENTER);
-
-        JTextField messageField = new JTextField();
-        messageField.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        JButton sendButton = new JButton("Gửi Tin Nhắn");
-        sendButton.addActionListener(e -> {
-            String message = messageField.getText().trim();
-            if (!message.isEmpty()) {
-//                sendMessageToServer(message);
-                messageField.setText(""); // Clear the input field after sending
-            } else {
-                JOptionPane.showMessageDialog(frame, "Vui lòng nhập tin nhắn.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
+    private JPanel createLogoutTab() {
+        JPanel logoutPanel = new JPanel();
+        logoutPanel.setBackground(new Color(255, 182, 193));
+        JButton logoutButton = new JButton("Đăng xuất");
+        logoutButton.addActionListener(e -> {
+            frame.dispose();
+            new LoginRegisterUI();
         });
-
-        JPanel inputPanel = new JPanel(new BorderLayout());
-        inputPanel.add(messageField, BorderLayout.CENTER);
-        inputPanel.add(sendButton, BorderLayout.EAST);
-
-        chatPanel.add(inputPanel, BorderLayout.SOUTH);
-
-        return chatPanel;
+        logoutButton.setBackground(new Color(220, 20, 60));
+        logoutButton.setForeground(Color.WHITE);
+        logoutPanel.add(logoutButton);
+        return logoutPanel;
     }
+    private void openWebsite() {
+        String query = queryField.getText().trim();
+        // Kiểm tra và thêm "http://" nếu chưa có
+        if (!query.startsWith("http")) {
+            query = "http://" + query;
+        }
+        try {
+            Desktop.getDesktop().browse(new java.net.URI(query));
 
+            DNSManager dnsManager = new DNSManager();
+            dnsManager.logAccess(username, "127.0.0.1", query); // Ghi nhận truy cập vào cơ sở dữ liệu
+
+            DNSHandlerClient dnsClient = new DNSHandlerClient("127.0.0.1", 12345, username);
+            dnsClient.sendDnsQuery("ACCESS:" + query); // Gửi yêu cầu truy cập tới server
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(frame, "Định dạng URL không hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
     private void performDnsLookup() {
         String query = queryField.getText().trim();
         if (!query.isEmpty()) {
             DNSHandlerClient dnsClient = new DNSHandlerClient("127.0.0.1", 12345, username);
-            String response = dnsClient.sendDnsQuery(query);
+
+            String queryPrefix = "";
+
+            if (query.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
+                queryPrefix = "TRA_CUU_IP:";
+            } else {
+                queryPrefix = "TRA_CUU:";
+            }
+
+            String response = dnsClient.sendDnsQuery(queryPrefix + query + " Tên người dùng: " + username);
             resultArea.setText(response);
+            System.out.println(response);
+
+            // Kiểm tra nếu phản hồi có chứa "Tên miền:"
+            String domainName = extractDomainFromResponse(response);
+            if (domainName != null) {
+                queryField.setText(domainName);
+                accessButton.setEnabled(true);   // Kích hoạt nút Truy Cập
+            } else {
+                accessButton.setEnabled(false);  // Vô hiệu hóa nếu không tìm thấy tên miền
+            }
         } else {
             JOptionPane.showMessageDialog(frame, "Vui lòng nhập tên miền hoặc địa chỉ IP.", "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    // Phương thức trích xuất tên miền từ phản hồi
+    private String extractDomainFromResponse(String response) {
+        String domainName = null;
+        // Tìm dòng chứa "Tên miền:" và lấy tên miền từ đó
+        for (String line : response.split("\n")) {
+            if (line.contains("Tên miền:")) {
+                domainName = line.substring(line.indexOf("Tên miền:") + 9, line.indexOf(";", line.indexOf("Tên miền:"))).trim();
+                break;
+            }
+        }
+        return domainName;
     }
 
 

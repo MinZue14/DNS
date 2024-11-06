@@ -35,7 +35,7 @@ public class DNSManager {
     public String resolveIpToDomain(String ip) {
         try {
             InetAddress inetAddress = InetAddress.getByName(ip);
-            return inetAddress.getHostName(); // Trả về tên miền
+            return inetAddress.getHostName();
         } catch (UnknownHostException e) {
             e.printStackTrace();
             return null; // Không tìm thấy tên miền
@@ -74,13 +74,12 @@ public class DNSManager {
         return false; // Thêm bản ghi thất bại
     }
 
-    // Phương thức để lấy id lớn nhất hiện tại và tăng nó lên
     private int getNextId() {
         String query = "SELECT MAX(id) AS max_id FROM dns_records";
         try (PreparedStatement stmt = Database.getConnection().prepareStatement(query);
              ResultSet resultSet = stmt.executeQuery()) {
             if (resultSet.next()) {
-                return resultSet.getInt("max_id") + 1; // Tăng giá trị id lên 1
+                return resultSet.getInt("max_id") + 1;
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -96,7 +95,6 @@ public class DNSManager {
         return ipAddress.matches(ipRegex); // Kiểm tra xem địa chỉ IP có khớp với regex không
     }
 
-    // Cập nhật bản ghi DNS
     // Xóa bản ghi DNS theo tên miền
     public boolean deleteDnsRecord(String domain) {
         String query = "DELETE FROM dns_records WHERE domain = ?";
@@ -189,4 +187,101 @@ public class DNSManager {
         }
         return records; // Trả về danh sách các bản ghi tìm thấy
     }
+
+    //-----------------Quản lý lịch sử truy cập------------------------
+    public void logAccess(String userName, String ipAddress, String domain) {
+        int id = getNextAccessId();
+
+        String query = "INSERT INTO access_log (id, user_name, ip_address, domain, access_time) VALUES (?, ?, ?, ?, NOW())";
+        try (PreparedStatement stmt = Database.getConnection().prepareStatement(query)) {
+            stmt.setInt(1, id);
+            stmt.setString(2, userName);
+            stmt.setString(3, ipAddress);
+            stmt.setString(4, domain);
+            stmt.executeUpdate();
+            System.out.println("Ghi nhận truy cập thành công vào cơ sở dữ liệu.");
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi ghi nhận truy cập: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private int getNextAccessId() {
+        String query = "SELECT MAX(id) AS max_id FROM access_log";
+        try (PreparedStatement stmt = Database.getConnection().prepareStatement(query);
+             ResultSet resultSet = stmt.executeQuery()) {
+            if (resultSet.next()) {
+                return resultSet.getInt("max_id") + 1;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 1;
+    }
+    // Phương thức lấy lịch sử truy cập của người dùng
+    public List<AccessHistory> getAccessHistoryForClient(String username) {
+        List<AccessHistory> historyList = new ArrayList<>();
+        String query = "SELECT id, user_name, access_time, ip_address, domain FROM access_log WHERE user_name = ? ORDER BY id ASC";
+
+        try (PreparedStatement stmt = Database.getConnection().prepareStatement(query)) {
+            stmt.setString(1, username);
+            ResultSet resultSet = stmt.executeQuery();
+
+            while (resultSet.next()) {
+                int id = resultSet.getInt("id");
+                String userName = resultSet.getString("user_name");
+                Timestamp accessTime = resultSet.getTimestamp("access_time");
+                String ipAddress = resultSet.getString("ip_address");
+                String domain = resultSet.getString("domain");
+
+                AccessHistory history = new AccessHistory(id, userName, accessTime, ipAddress, domain);
+                historyList.add(history);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return historyList; // Trả về danh sách lịch sử truy cập
+    }
+
+    // Phương thức lấy toàn bộ lịch sử truy cập của tất cả người dùng
+    public List<AccessHistory> getAllAccessHistory() {
+        List<AccessHistory> historyList = new ArrayList<>();
+        String query = "SELECT id, user_name, access_time, ip_address, domain FROM access_log";
+
+        try (PreparedStatement stmt = Database.getConnection().prepareStatement(query);
+             ResultSet resultSet = stmt.executeQuery()) {
+
+            while (resultSet.next()) {
+                int id = resultSet.getInt("id");
+                String userName = resultSet.getString("user_name");
+                Timestamp accessTime = resultSet.getTimestamp("access_time");
+                String ipAddress = resultSet.getString("ip_address");
+                String domain = resultSet.getString("domain");
+
+                AccessHistory history = new AccessHistory(id, userName, accessTime, ipAddress, domain);
+                historyList.add(history);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return historyList; // Trả về danh sách toàn bộ lịch sử truy cập
+    }
+
+    // Phương thức xóa bản ghi truy cập theo ID
+    public void deleteAccessRecord(int accessId) {
+        String query = "DELETE FROM access_log WHERE id = ?";
+        try (PreparedStatement stmt = Database.getConnection().prepareStatement(query)) {
+            stmt.setInt(1, accessId);
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Xóa bản ghi truy cập thành công.");
+            } else {
+                System.out.println("Không tìm thấy bản ghi để xóa.");
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi xóa bản ghi truy cập: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }
+
