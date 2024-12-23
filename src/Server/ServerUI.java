@@ -49,7 +49,7 @@ public class ServerUI {
 
 
         JPanel accessHistoryPanel = new AccessHistoryPanel();
-        tabbedPane.addTab("Giám sát lịch sử tra cứu", accessHistoryPanel);
+        tabbedPane.addTab("Giám sát lịch sử truy cập", accessHistoryPanel);
 
         JPanel logPanel = createLogPanel();
         tabbedPane.addTab("Log", logPanel);
