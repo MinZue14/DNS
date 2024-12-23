@@ -7,6 +7,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.net.InetAddress;
 
 public class MainUI {
     private JFrame frame;
@@ -130,22 +131,22 @@ public class MainUI {
             query = "http://" + query;
         }
         try {
+            // Mở trang web
             Desktop.getDesktop().browse(new java.net.URI(query));
 
-            String clientIP = java.net.InetAddress.getLocalHost().getHostAddress(); // Lấy IP của client
+            // Lấy địa chỉ IP của client
+            String clientIpAddress = InetAddress.getLocalHost().getHostAddress(); // Lấy địa chỉ IP
+
             DNSManager dnsManager = new DNSManager();
-            dnsManager.logAccess(username, clientIP, query); // Ghi nhận truy cập vào cơ sở dữ liệu
+            dnsManager.logAccess(username, clientIpAddress, query); // Ghi nhận truy cập vào cơ sở dữ liệu
 
             DNSHandlerClient dnsClient = new DNSHandlerClient("127.0.0.1", 12345, username);
-            String request = "ACCESS:" + query + " | USERNAME:" + username + " | IP:" + clientIP;
-            dnsClient.sendDnsQuery(request); // Gửi yêu cầu truy cập tới server
-
+            dnsClient.sendDnsQuery("ACCESS:" + query + " Tên người dùng: " + username + " Địa chỉ IP: " + clientIpAddress); // Gửi yêu cầu truy cập tới server
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(frame, "Định dạng URL không hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
-    }
-    private void performDnsLookup() {
+    }    private void performDnsLookup() {
         String query = queryField.getText().trim();
         if (!query.isEmpty()) {
             DNSHandlerClient dnsClient = new DNSHandlerClient("127.0.0.1", 12345, username);
