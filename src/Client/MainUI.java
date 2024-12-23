@@ -132,11 +132,14 @@ public class MainUI {
         try {
             Desktop.getDesktop().browse(new java.net.URI(query));
 
+            String clientIP = java.net.InetAddress.getLocalHost().getHostAddress(); // Lấy IP của client
             DNSManager dnsManager = new DNSManager();
-            dnsManager.logAccess(username, "127.0.0.1", query); // Ghi nhận truy cập vào cơ sở dữ liệu
+            dnsManager.logAccess(username, clientIP, query); // Ghi nhận truy cập vào cơ sở dữ liệu
 
             DNSHandlerClient dnsClient = new DNSHandlerClient("127.0.0.1", 12345, username);
-            dnsClient.sendDnsQuery("ACCESS:" + query); // Gửi yêu cầu truy cập tới server
+            String request = "ACCESS:" + query + " | USERNAME:" + username + " | IP:" + clientIP;
+            dnsClient.sendDnsQuery(request); // Gửi yêu cầu truy cập tới server
+
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(frame, "Định dạng URL không hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);

@@ -4,7 +4,9 @@ import Database.DNSManager;
 import javax.swing.*;
 import javax.swing.text.*;
 import java.awt.*;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -106,9 +108,26 @@ public class ServerUI {
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                String clientInfo = clientSocket.getInetAddress().toString();
-                appendColoredLog("Kết nối từ " + clientInfo, Color.BLUE);
+                String clientIP = clientSocket.getInetAddress().toString();
+                appendColoredLog("Kết nối từ " + clientIP, Color.BLUE);
 
+                // Lấy thông tin yêu cầu từ client
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                String request = in.readLine(); // Đọc yêu cầu từ client
+
+                // Tách thông tin từ chuỗi yêu cầu
+                String[] requestParts = request.split("\\|");
+                String query = requestParts[0].split(":")[1].trim();  // Truy xuất query
+                String username = requestParts[1].split(":")[1].trim(); // Truy xuất username
+                String clientIp = requestParts[2].split(":")[1].trim(); // Truy xuất IP của client
+
+                appendColoredLog("Nhận yêu cầu từ " + username + " (" + clientIp + ") với truy vấn: " + query, Color.GREEN);
+
+                // Ghi nhận thông tin truy cập
+                DNSManager dnsManager = new DNSManager();
+                dnsManager.logAccess(username, clientIp, query); // Ghi nhận thông tin truy cập
+
+                // Xử lý yêu cầu DNS (thực hiện tra cứu, v.v.)
                 DnsHandlerServer dnsHandler = new DnsHandlerServer(clientSocket, this);
                 dnsHandler.start();
             }
